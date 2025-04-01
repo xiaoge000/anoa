@@ -4,18 +4,17 @@ const { google } = require('googleapis');
 const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 
-// ✅ 环境变量
-const BOT_TOKEN = process.env.TELEGRAM_TOKEN;
-const SHEET_ID = process.env.SHEET_ID;
-const SHEET_NAME = process.env.SHEET_NAME || '话术平台表';
-const GOOGLE_KEY_FILE = process.env.GOOGLE_KEY_FILE || 'key.json';
-
 const app = express();
 app.use(bodyParser.json());
 
-// ✅ 初始化 bot（Webhook 模式）
-const bot = new TelegramBot(BOT_TOKEN);
-bot.setWebHook(`${process.env.BASE_URL}/webhook`);
+// ✅ 配置项
+const BOT_TOKEN = process.env.TELEGRAM_TOKEN || '你的BotToken';
+const SHEET_ID = process.env.SHEET_ID || '你的SheetID';
+const SHEET_NAME = process.env.SHEET_NAME || '话术平台表';
+const GOOGLE_KEY_FILE = process.env.GOOGLE_KEY_FILE || 'key.json';
+
+// ✅ 初始化 Telegram Bot（轮询监听私聊）
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 // ✅ Google Sheets 授权
 const auth = new google.auth.GoogleAuth({
@@ -24,7 +23,6 @@ const auth = new google.auth.GoogleAuth({
 });
 const sheets = google.sheets({ version: 'v4', auth });
 
-// ✅ 缓存结构
 let fullData = null;
 let menuMap = {};
 
@@ -86,7 +84,7 @@ async function getContent(fullMenu) {
   return null;
 }
 
-// ✅ Bot 命令
+// ✅ 菜单指令
 bot.onText(/\/start|\/home/, async (msg) => {
   const categories = await getCategories();
   const buttons = chunkArray(
@@ -100,6 +98,10 @@ bot.onText(/\/start|\/home/, async (msg) => {
 bot.onText(/\/tc/, (msg) => {
   fullData = null;
   bot.sendMessage(msg.chat.id, '♻️ 已刷新缓存，请重新点击菜单');
+});
+
+bot.onText(/\/help/, (msg) => {
+  bot.sendMessage(msg.chat.id, `📖 使用说明：\n1️⃣ /start 进入菜单\n2️⃣ 点击分类 → 菜单\n3️⃣ 显示话术内容+图片\n4️⃣ /tc 可刷新缓存`);
 });
 
 bot.on('callback_query', async (query) => {
@@ -129,21 +131,46 @@ bot.on('callback_query', async (query) => {
   bot.answerCallbackQuery(query.id);
 });
 
-// ✅ Webhook 路由
-app.post('/webhook', async (req, res) => {
-  bot.processUpdate(req.body);
+// ✅ 私聊关键词搜索
+bot.on('message', async (msg) => {
+  if (msg.chat.type !== 'private' || msg.text.startsWith('/')) return;
+  const keyword = msg.text.trim().toLowerCase();
+  const rows = await fetchSheet();
+  const matches = rows.filter((row, i) => i > 0 && (
+    (row[1] && row[1].toLowerCase().includes(keyword)) ||
+    (row[2] && row[2].toLowerCase().includes(keyword))
+  )).slice(0, 5);
 
-  // 📷 频道图片上传到表格
+  if (matches.length === 0) {
+    await bot.sendMessage(msg.chat.id, '⚠️ 没有找到相关话术');
+  } else {
+    for (const row of matches) {
+      const title = row[1] || '（无菜单）';
+      const content = row[2] || '（无话术）';
+      const image = row[3];
+      await bot.sendMessage(msg.chat.id, `📌 *${title}*\n\n${content}`, { parse_mode: 'Markdown' });
+      if (image) await bot.sendPhoto(msg.chat.id, image);
+    }
+  }
+});
+
+
+// ✅ Cloud Run Webhook：监听频道发图
+app.post('/webhook', async (req, res) => {
   const body = req.body;
   let fileId = null;
 
+  // ✅ 纯图片
   if (body.channel_post?.photo) {
     const photos = body.channel_post.photo;
     fileId = photos[photos.length - 1].file_id;
+    console.log('✅ 收到频道图片 file_id：', fileId);
   }
 
+  // ✅ 文件形式的图片（截图）
   if (body.channel_post?.document?.mime_type?.startsWith('image/')) {
     fileId = body.channel_post.document.file_id;
+    console.log('🖼️ 收到截图文件 file_id：', fileId);
   }
 
   if (fileId) {
@@ -167,13 +194,15 @@ app.post('/webhook', async (req, res) => {
       valueInputOption: 'RAW',
       requestBody: { values: [[fileUrl]] },
     });
+
+    console.log(`✅ 已写入第 ${firstEmptyRow} 行 D列`);
   }
 
   res.sendStatus(200);
 });
 
-// ✅ 启动 Express
+// ✅ 启动服务（必须监听 Cloud Run 的 $PORT）
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Listening on port ${PORT}`);
+  console.log(`🚀 Bot 已启动，监听端口 ${PORT}`);
 });
