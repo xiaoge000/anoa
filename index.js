@@ -7,16 +7,16 @@ const TelegramBot = require('node-telegram-bot-api');
 const app = express();
 app.use(bodyParser.json());
 
-// ✅ 环境变量
+// ✅ 环境变量（Cloud Run 设置）
 const BOT_TOKEN = process.env.TELEGRAM_TOKEN;
 const SHEET_ID = process.env.SHEET_ID;
 const SHEET_NAME = process.env.SHEET_NAME || '话术平台表';
 const GOOGLE_KEY_FILE = process.env.GOOGLE_KEY_FILE || 'key.json';
 
-// ✅ 初始化 Bot（Webhook 模式，禁止 polling）
+// ✅ 初始化 Bot（Webhook 模式 ✅，不要加 polling）
 const bot = new TelegramBot(BOT_TOKEN);
 
-// ✅ Google Sheets 授权
+// ✅ 初始化 Google Sheets 授权
 const auth = new google.auth.GoogleAuth({
   keyFile: GOOGLE_KEY_FILE,
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -26,6 +26,7 @@ const sheets = google.sheets({ version: 'v4', auth });
 let fullData = null;
 let menuMap = {};
 
+// ✅ 工具函数
 function chunkArray(arr, size) {
   const res = [];
   for (let i = 0; i < arr.length; i += size) {
@@ -84,7 +85,7 @@ async function getContent(fullMenu) {
   return null;
 }
 
-// ✅ 指令：/start 和 /home
+// ✅ /start /home 菜单入口
 bot.onText(/\/start|\/home/, async (msg) => {
   const categories = await getCategories();
   const buttons = chunkArray(
@@ -95,13 +96,13 @@ bot.onText(/\/start|\/home/, async (msg) => {
   });
 });
 
-// ✅ 指令：/tc 清除缓存
+// ✅ /tc 刷新缓存
 bot.onText(/\/tc/, (msg) => {
   fullData = null;
   bot.sendMessage(msg.chat.id, '✅ 缓存已刷新，请重新点击菜单');
 });
 
-// ✅ 回调按钮处理
+// ✅ 按钮处理
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
@@ -152,10 +153,10 @@ bot.on('message', async (msg) => {
   }
 });
 
-// ✅ Webhook 接收入口（频道图片监听）
+// ✅ Webhook 路由（处理频道发图 + 自动写入 Google Sheets）
 app.post('/webhook', async (req, res) => {
   try {
-    bot.processUpdate(req.body); // 必须要有这行！
+    bot.processUpdate(req.body);  // ✅ 必须有！Webhook 入口
 
     const body = req.body;
     let fileId = null;
@@ -191,18 +192,18 @@ app.post('/webhook', async (req, res) => {
         requestBody: { values: [[fileUrl]] },
       });
 
-      console.log(`✅ 图片写入 D${firstEmptyRow}`);
+      console.log(`✅ 图片写入 Google Sheet D${firstEmptyRow}`);
     }
 
     res.sendStatus(200);
   } catch (err) {
-    console.error('❌ Webhook 错误：', err.message);
+    console.error('❌ Webhook 处理错误：', err.message);
     res.sendStatus(500);
   }
 });
 
-// ✅ 启动服务（Cloud Run 监听 PORT）
+// ✅ 启动 Cloud Run 服务
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 服务已启动，监听端口 ${PORT}`);
+  console.log(`🚀 服务启动成功，监听端口 ${PORT}`);
 });
