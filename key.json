@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "cohesive-ridge-455513-f5",
+  "private_key_id": "691268787513603555eecef8ffab9c72c537f401",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCw8lOLDhgfyZPC\nu2Z9kAsaWJG4Kl8DJPLeaP0Z5dx3Lr6KB8Q1odibLlf2KbKOLpPGm1xux/Ti4H9i\n/4m2Vq3HdX3/re0/CmVK945jdiMAp/tj78uqu11y1YOY4pQaswxnu44jC5cJUt6Y\nkKj7qj5n9uAfoRaWIu4OyDJZfNGEDjGMh/yWNnLA3udxDH6gottNVsJPS4pBb3An\ngrQ5e+bcrnsHq29k2Volxnr4M8LzpEpPAQyT6w1ggHMv6mWUelQ8VkxNmO+8dHNe\n/z093voEsdwsBSArXEltIwIUMFH/8dDGRfdMHLoc3FeeEi6vuqrIcJ9sBLBfrhJ8\n14brRi+RAgMBAAECggEAB2OFEM1MvVYQ4xypb9SSHB5m7lRpnYNfV2F1sS1Hppvn\ndbLTkwRAO+GkZ2lwFO8VuWE/K7qSi59BfoAqb1hg/w9VTLYF7kAYQPhDpDxYg5Rg\nI1kN7YIPqcYH7dxHQDKqEdJTgfvfyZJB7Ie84K5oFvYIf5Wd0HTisTATpyg2xP9z\nShwYp7EhtsFTBwGTiDjDrU5lRep1KhnNSvVYDCcrPTocbs3N0Uur0f0kD4gBl0l+\n5qri8WIhiVrNV20Ddv1YHSvyEgxjnQZHn+Fz7Bulo6nnrfaweh9OYsFd8sWS0l7P\nPhVscRmnz9Wu/Dg6T0C45mYTAy8EYKjefv/AEGFYAQKBgQDz+mJWOJG7w3Ytj2Mm\nUpilqCm2mRFboLy0P/PcQvCRm4bmXiSn2CKfS8VksG7A56NVwI6wa7J4g8tcq91G\nHK9iPDjX31tsskfMs6Q1/ik+4NTw2PRUFqE6mGXyFM3fkavk2rJ/oZsoeXMC/dFI\nrn+y63OZDgjemES9S3aK+TwcAQKBgQC5qmLZ0vtJ5BD3H4VNhOlxYR1Slyj/TLtx\nl9IaQJbHct1oQl64AwDsoFw4L7LZQb/aaCLb6mFaAuycypM1MZS/ychgJLeM/LC/\nTb52bySSSjltaY1h6Y5gmJaYmMBAyVnlDflEMLBHp/jkwRF0ze3cRH/Sb80oX8xK\nLbIhGyZTkQKBgFtFTuZccUBhxeMTYg8jFRHb0AcMSi8R+aYgypSawi5mlVe23lWg\nCIu5J9YcHsKxpSveRkL/dxuYikpXzQZ+kqnYR5eSajxGkY+loIfGVh28tEyJjRWs\nBZLLElA2sjGx6DFMEzyl80p37Kuw0kszZHhFltAqLO1A325FPcqNpIwBAoGASNVT\nU9nVJAZotVjTJTbHkOek5hpQRd5nBcel7xB5VaJ0woqOt6bN/QVnR89GXL3TMi15\nx0VpjTLqeRNqrgpWLOpORZEBxDf4agNofPNaqFyfrJEkmk1Rwgj5wsDhYkjaj+Vs\nbFihPmrhU3N9kpGaBreEYRvkojr6W/sTDrOk1FECgYB3fVUvduJOhjI1xWm9/WCX\nYOb/VAXtQBMzGhzblCOmXwnEMcNxjj9+MdxACUzhZxEgJDvNrslzT/8ef807Bpcn\nOuK73DhKbpkCLHH8qdiPI2kg9HgCEPcn6qXrDo1QUqY256H1qpb+4wZB7ongK6ui\na39wnyI7KWgc5bmfj68dSg==\n-----END PRIVATE KEY-----\n",
+  "client_email": "telegram-bot@cohesive-ridge-455513-f5.iam.gserviceaccount.com",
+  "client_id": "108924635746580003175",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/telegram-bot%40cohesive-ridge-455513-f5.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
