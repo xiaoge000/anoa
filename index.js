@@ -7,25 +7,27 @@ const TelegramBot = require('node-telegram-bot-api');
 const app = express();
 app.use(bodyParser.json());
 
-// ✅ 配置项（来自环境变量或默认）
-const BOT_TOKEN = process.env.TELEGRAM_TOKEN || '你的BotToken';
-const SHEET_ID = process.env.SHEET_ID || '你的表格ID';
+// ✅ 环境变量配置（Cloud Run 中设置）
+const BOT_TOKEN = process.env.TELEGRAM_TOKEN;
+const SHEET_ID = process.env.SHEET_ID;
 const SHEET_NAME = process.env.SHEET_NAME || '话术平台表';
 const GOOGLE_KEY_FILE = process.env.GOOGLE_KEY_FILE || 'key.json';
 
-const bot = new TelegramBot(BOT_TOKEN); // 不用 polling，因为 webhook 模式
+// ✅ 初始化 Telegram Bot（Webhook 模式！）
+const bot = new TelegramBot(BOT_TOKEN);
 
-// ✅ Google Sheets 授权
+// ✅ 初始化 Google Sheets 授权
 const auth = new google.auth.GoogleAuth({
   keyFile: GOOGLE_KEY_FILE,
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 const sheets = google.sheets({ version: 'v4', auth });
 
-// ✅ 数据缓存
+// ✅ 缓存数据结构
 let fullData = null;
 let menuMap = {};
 
+// ✅ 工具函数：分割数组
 function chunkArray(arr, size) {
   const res = [];
   for (let i = 0; i < arr.length; i += size) {
@@ -34,6 +36,7 @@ function chunkArray(arr, size) {
   return res;
 }
 
+// ✅ 从表格获取数据
 async function fetchSheet() {
   if (fullData) return fullData;
   const res = await sheets.spreadsheets.values.get({
@@ -44,6 +47,7 @@ async function fetchSheet() {
   return fullData;
 }
 
+// ✅ 获取分类
 async function getCategories() {
   const rows = await fetchSheet();
   const set = new Set();
@@ -54,6 +58,7 @@ async function getCategories() {
   return [...set];
 }
 
+// ✅ 获取分类下菜单
 async function getMenusByCategory(category) {
   const rows = await fetchSheet();
   const result = [];
@@ -71,6 +76,7 @@ async function getMenusByCategory(category) {
   return result;
 }
 
+// ✅ 获取菜单对应话术内容
 async function getContent(fullMenu) {
   const rows = await fetchSheet();
   for (let i = 1; i < rows.length; i++) {
@@ -84,7 +90,7 @@ async function getContent(fullMenu) {
   return null;
 }
 
-// ✅ 指令菜单
+// ✅ /start 菜单入口
 bot.onText(/\/start|\/home/, async (msg) => {
   const categories = await getCategories();
   const buttons = chunkArray(
@@ -95,16 +101,18 @@ bot.onText(/\/start|\/home/, async (msg) => {
   });
 });
 
+// ✅ /tc 刷新缓存
 bot.onText(/\/tc/, (msg) => {
   fullData = null;
   bot.sendMessage(msg.chat.id, '♻️ 已刷新缓存，请重新点击菜单');
 });
 
+// ✅ /help 帮助指令
 bot.onText(/\/help/, (msg) => {
   bot.sendMessage(msg.chat.id, `📖 使用说明：\n1️⃣ /start 进入菜单\n2️⃣ 点击分类 → 菜单\n3️⃣ 显示话术内容+图片\n4️⃣ /tc 可刷新缓存`);
 });
 
-// ✅ 按钮响应
+// ✅ 按钮点击处理
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
@@ -132,7 +140,7 @@ bot.on('callback_query', async (query) => {
   bot.answerCallbackQuery(query.id);
 });
 
-// ✅ 私聊关键词模糊搜索
+// ✅ 私聊关键词搜索
 bot.on('message', async (msg) => {
   if (msg.chat.type !== 'private' || msg.text.startsWith('/')) return;
   const keyword = msg.text.trim().toLowerCase();
@@ -155,14 +163,13 @@ bot.on('message', async (msg) => {
   }
 });
 
-
-// ✅ Webhook 路由：核心修复！
+// ✅ Webhook 路由（必须有 bot.processUpdate）
 app.post('/webhook', (req, res) => {
-  bot.processUpdate(req.body); // 👈 必须有这行！让 bot 接管 webhook 消息
+  bot.processUpdate(req.body);
   res.sendStatus(200);
 });
 
-// ✅ 启动 Express 服务
+// ✅ 启动服务（Cloud Run 会注入 PORT）
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Bot 已启动，监听端口 ${PORT}`);
