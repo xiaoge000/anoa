@@ -7,14 +7,13 @@ const TelegramBot = require('node-telegram-bot-api');
 const app = express();
 app.use(bodyParser.json());
 
-// ✅ 配置项
+// ✅ 配置项（来自环境变量或默认）
 const BOT_TOKEN = process.env.TELEGRAM_TOKEN || '你的BotToken';
-const SHEET_ID = process.env.SHEET_ID || '你的SheetID';
+const SHEET_ID = process.env.SHEET_ID || '你的表格ID';
 const SHEET_NAME = process.env.SHEET_NAME || '话术平台表';
 const GOOGLE_KEY_FILE = process.env.GOOGLE_KEY_FILE || 'key.json';
 
-// ✅ 初始化 Telegram Bot（轮询监听私聊）
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(BOT_TOKEN); // 不用 polling，因为 webhook 模式
 
 // ✅ Google Sheets 授权
 const auth = new google.auth.GoogleAuth({
@@ -23,6 +22,7 @@ const auth = new google.auth.GoogleAuth({
 });
 const sheets = google.sheets({ version: 'v4', auth });
 
+// ✅ 数据缓存
 let fullData = null;
 let menuMap = {};
 
@@ -84,7 +84,7 @@ async function getContent(fullMenu) {
   return null;
 }
 
-// ✅ 菜单指令
+// ✅ 指令菜单
 bot.onText(/\/start|\/home/, async (msg) => {
   const categories = await getCategories();
   const buttons = chunkArray(
@@ -104,6 +104,7 @@ bot.onText(/\/help/, (msg) => {
   bot.sendMessage(msg.chat.id, `📖 使用说明：\n1️⃣ /start 进入菜单\n2️⃣ 点击分类 → 菜单\n3️⃣ 显示话术内容+图片\n4️⃣ /tc 可刷新缓存`);
 });
 
+// ✅ 按钮响应
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
@@ -131,7 +132,7 @@ bot.on('callback_query', async (query) => {
   bot.answerCallbackQuery(query.id);
 });
 
-// ✅ 私聊关键词搜索
+// ✅ 私聊关键词模糊搜索
 bot.on('message', async (msg) => {
   if (msg.chat.type !== 'private' || msg.text.startsWith('/')) return;
   const keyword = msg.text.trim().toLowerCase();
@@ -155,53 +156,13 @@ bot.on('message', async (msg) => {
 });
 
 
-// ✅ Cloud Run Webhook：监听频道发图
-app.post('/webhook', async (req, res) => {
-  const body = req.body;
-  let fileId = null;
-
-  // ✅ 纯图片
-  if (body.channel_post?.photo) {
-    const photos = body.channel_post.photo;
-    fileId = photos[photos.length - 1].file_id;
-    console.log('✅ 收到频道图片 file_id：', fileId);
-  }
-
-  // ✅ 文件形式的图片（截图）
-  if (body.channel_post?.document?.mime_type?.startsWith('image/')) {
-    fileId = body.channel_post.document.file_id;
-    console.log('🖼️ 收到截图文件 file_id：', fileId);
-  }
-
-  if (fileId) {
-    const res1 = await axios.get(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
-    const filePath = res1.data.result.file_path;
-    const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
-
-    const authClient = await auth.getClient();
-    const gsapi = google.sheets({ version: 'v4', auth: authClient });
-    const sheetRes = await gsapi.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: `${SHEET_NAME}!D2:D`,
-    });
-
-    const values = sheetRes.data.values || [];
-    const firstEmptyRow = values.findIndex(row => !row[0]) + 2 || values.length + 2;
-
-    await gsapi.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID,
-      range: `${SHEET_NAME}!D${firstEmptyRow}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[fileUrl]] },
-    });
-
-    console.log(`✅ 已写入第 ${firstEmptyRow} 行 D列`);
-  }
-
+// ✅ Webhook 路由：核心修复！
+app.post('/webhook', (req, res) => {
+  bot.processUpdate(req.body); // 👈 必须有这行！让 bot 接管 webhook 消息
   res.sendStatus(200);
 });
 
-// ✅ 启动服务（必须监听 Cloud Run 的 $PORT）
+// ✅ 启动 Express 服务
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Bot 已启动，监听端口 ${PORT}`);
