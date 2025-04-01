@@ -13,10 +13,10 @@ const SHEET_ID = process.env.SHEET_ID;
 const SHEET_NAME = process.env.SHEET_NAME || '话术平台表';
 const GOOGLE_KEY_FILE = process.env.GOOGLE_KEY_FILE || 'key.json';
 
-// ✅ 初始化 Bot（Webhook 模式，不要 polling）
+// ✅ 初始化 Bot（Webhook 模式，禁止 polling）
 const bot = new TelegramBot(BOT_TOKEN);
 
-// ✅ Google Sheets 认证
+// ✅ Google Sheets 授权
 const auth = new google.auth.GoogleAuth({
   keyFile: GOOGLE_KEY_FILE,
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -84,7 +84,7 @@ async function getContent(fullMenu) {
   return null;
 }
 
-// ✅ /start 菜单入口
+// ✅ 指令：/start 和 /home
 bot.onText(/\/start|\/home/, async (msg) => {
   const categories = await getCategories();
   const buttons = chunkArray(
@@ -95,11 +95,13 @@ bot.onText(/\/start|\/home/, async (msg) => {
   });
 });
 
+// ✅ 指令：/tc 清除缓存
 bot.onText(/\/tc/, (msg) => {
   fullData = null;
   bot.sendMessage(msg.chat.id, '✅ 缓存已刷新，请重新点击菜单');
 });
 
+// ✅ 回调按钮处理
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
@@ -127,7 +129,7 @@ bot.on('callback_query', async (query) => {
   bot.answerCallbackQuery(query.id);
 });
 
-// ✅ 私聊关键词模糊搜索
+// ✅ 私聊模糊搜索
 bot.on('message', async (msg) => {
   if (msg.chat.type !== 'private' || msg.text.startsWith('/')) return;
   const keyword = msg.text.trim().toLowerCase();
@@ -150,10 +152,11 @@ bot.on('message', async (msg) => {
   }
 });
 
-// ✅ Webhook 入口：监听频道图片、截图文件上传
+// ✅ Webhook 接收入口（频道图片监听）
 app.post('/webhook', async (req, res) => {
   try {
-    bot.processUpdate(req.body); // 交由 bot 自动处理
+    bot.processUpdate(req.body); // 必须要有这行！
+
     const body = req.body;
     let fileId = null;
 
@@ -161,6 +164,7 @@ app.post('/webhook', async (req, res) => {
       const photos = body.channel_post.photo;
       fileId = photos[photos.length - 1].file_id;
     }
+
     if (body.channel_post?.document?.mime_type?.startsWith('image/')) {
       fileId = body.channel_post.document.file_id;
     }
@@ -197,8 +201,8 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// ✅ Cloud Run 启动端口
+// ✅ 启动服务（Cloud Run 监听 PORT）
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 服务启动，端口：${PORT}`);
+  console.log(`🚀 服务已启动，监听端口 ${PORT}`);
 });
