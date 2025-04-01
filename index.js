@@ -1,4 +1,3 @@
-// ✅ Telegram Bot 完整 Webhook 模式代码
 const express = require('express');
 const bodyParser = require('body-parser');
 const { google } = require('googleapis');
@@ -8,16 +7,16 @@ const TelegramBot = require('node-telegram-bot-api');
 const app = express();
 app.use(bodyParser.json());
 
-// ✅ Cloud Run 环境变量
+// ✅ 环境变量
 const BOT_TOKEN = process.env.TELEGRAM_TOKEN;
 const SHEET_ID = process.env.SHEET_ID;
 const SHEET_NAME = process.env.SHEET_NAME || '话术平台表';
 const GOOGLE_KEY_FILE = process.env.GOOGLE_KEY_FILE || 'key.json';
 
-// ✅ 初始化 Telegram Bot（Webhook 模式）
+// ✅ 初始化 Bot（Webhook 模式，不要 polling）
 const bot = new TelegramBot(BOT_TOKEN);
 
-// ✅ Google Sheets 授权
+// ✅ Google Sheets 认证
 const auth = new google.auth.GoogleAuth({
   keyFile: GOOGLE_KEY_FILE,
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -85,7 +84,7 @@ async function getContent(fullMenu) {
   return null;
 }
 
-// ✅ 菜单入口
+// ✅ /start 菜单入口
 bot.onText(/\/start|\/home/, async (msg) => {
   const categories = await getCategories();
   const buttons = chunkArray(
@@ -98,11 +97,7 @@ bot.onText(/\/start|\/home/, async (msg) => {
 
 bot.onText(/\/tc/, (msg) => {
   fullData = null;
-  bot.sendMessage(msg.chat.id, '✅ 缓存已清空，请重新点击菜单');
-});
-
-bot.onText(/\/help/, (msg) => {
-  bot.sendMessage(msg.chat.id, '📖 使用说明：\n1️⃣ /start 显示菜单\n2️⃣ 点击分类进入话术\n3️⃣ /tc 刷新缓存');
+  bot.sendMessage(msg.chat.id, '✅ 缓存已刷新，请重新点击菜单');
 });
 
 bot.on('callback_query', async (query) => {
@@ -115,7 +110,7 @@ bot.on('callback_query', async (query) => {
     const buttons = chunkArray(
       menus.map(m => ({ text: m.label, callback_data: `menu_${m.id}` })), 2
     );
-    return bot.sendMessage(chatId, `📁 分类【${category}】，请选择菜单：`, {
+    return bot.sendMessage(chatId, `📁 分类【${category}】菜单如下：`, {
       reply_markup: { inline_keyboard: buttons },
     });
   }
@@ -132,6 +127,7 @@ bot.on('callback_query', async (query) => {
   bot.answerCallbackQuery(query.id);
 });
 
+// ✅ 私聊关键词模糊搜索
 bot.on('message', async (msg) => {
   if (msg.chat.type !== 'private' || msg.text.startsWith('/')) return;
   const keyword = msg.text.trim().toLowerCase();
@@ -154,12 +150,10 @@ bot.on('message', async (msg) => {
   }
 });
 
-// ✅ webhook 接口
+// ✅ Webhook 入口：监听频道图片、截图文件上传
 app.post('/webhook', async (req, res) => {
   try {
-    console.log('✅ 收到 Telegram 消息：', JSON.stringify(req.body));
-    bot.processUpdate(req.body);
-
+    bot.processUpdate(req.body); // 交由 bot 自动处理
     const body = req.body;
     let fileId = null;
 
@@ -193,18 +187,18 @@ app.post('/webhook', async (req, res) => {
         requestBody: { values: [[fileUrl]] },
       });
 
-      console.log(`📥 图片链接已写入 D${firstEmptyRow}`);
+      console.log(`✅ 图片写入 D${firstEmptyRow}`);
     }
 
     res.sendStatus(200);
   } catch (err) {
-    console.error('❌ Webhook 错误：', err);
+    console.error('❌ Webhook 错误：', err.message);
     res.sendStatus(500);
   }
 });
 
-// ✅ 启动服务器
+// ✅ Cloud Run 启动端口
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Bot 启动成功，监听端口 ${PORT}`);
+  console.log(`🚀 服务启动，端口：${PORT}`);
 });
